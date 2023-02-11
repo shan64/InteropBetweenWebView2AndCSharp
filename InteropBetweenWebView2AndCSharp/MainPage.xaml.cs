@@ -1,5 +1,8 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using System;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -26,9 +29,39 @@ namespace InteropBetweenWebView2AndCSharp
             WebView2.Source = new Uri("http://webview2.uwp.example/index.html");
         }
 
-        private void LoadImageButtonClicked(object sender, RoutedEventArgs e)
+        private async void LoadImageButtonClicked(object sender, RoutedEventArgs e)
         {
+            // Show Open File Dialog to select image
+            FileOpenPicker fileOpenPicker = new FileOpenPicker();
+            fileOpenPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            fileOpenPicker.FileTypeFilter.Add(".png");
+            fileOpenPicker.FileTypeFilter.Add(".jpg");
+            fileOpenPicker.ViewMode = PickerViewMode.Thumbnail;
+            var inputFile = await fileOpenPicker.PickSingleFileAsync();
 
+            // Store selected image in a buffer
+            var buffer = await FileIO.ReadBufferAsync(inputFile);
+
+            var environment = await CoreWebView2Environment.CreateAsync();
+            // Create shared buffer
+            using (var sharedBuffer = environment.CreateSharedBuffer(buffer.Length))
+            {
+                using (var stream = sharedBuffer.OpenStream())
+                {
+                    // Write image to the shared buffer
+                    using (DataWriter writer = new DataWriter(stream.GetOutputStreamAt(0)))
+                    {
+                        writer.WriteBuffer(buffer);
+                        await writer.StoreAsync();
+                    }
+
+                    string additionalDataAsJson = ""; // can provide some extra information when we share the 
+                    // Send and Notify web of shared buffer
+                    WebView2.CoreWebView2.PostSharedBufferToScript(sharedBuffer,
+                        CoreWebView2SharedBufferAccess.ReadOnly,
+                        additionalDataAsJson);
+                }
+            }
         }
     }
 }

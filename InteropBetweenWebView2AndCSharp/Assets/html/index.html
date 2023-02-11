@@ -1,11 +1,28 @@
 ﻿<!DOCTYPE html>
 
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
-<head>
-    <meta charset="utf-8" />
-    <title></title>
-</head>
+<html lang="en">
 <body style="background: #f5f5f5">
-<h1>Lets send some data</h1>
+    <div style="width: 95vw; height: 95vh">
+        <img id="image" style="max-width: 100%; height: auto; max-height: 100%" />
+    </div>
+    <script>
+        window.onload = function () {
+            // This event is invoked when a SharedBuffer is posted to JavaScript
+            window.chrome.webview.addEventListener("sharedbufferreceived", e => {
+                let displayBuffer = e.getBuffer();
+
+                // Consume the data from the buffer (in the form of an ArrayBuffer)
+                let displayBufferArray = new Uint8Array(displayBuffer);
+
+                var image = document.getElementById('image');
+                image.src = URL.createObjectURL(
+                    new Blob([displayBufferArray.buffer], { type: 'image/jpg' })
+                );
+
+                //Release the buffer after consuming the data.
+                window.chrome.webview.releaseBuffer(displayBuffer);
+            });
+        }
+    </script>
 </body>
 </html>
